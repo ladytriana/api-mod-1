@@ -1,14 +1,43 @@
 import { supabase } from "../config/supabaseClient.js";
 
 export const MedicationModel = {
-  async getAll() {
-    const { data, error } = await supabase
+  async getAll(name = null, page = 1, limit = 10) {
+    const offset = (page - 1) * limit;
+
+    let query = supabase
       .from("medications")
       .select(
-        "id, sku, name, description, price, quantity, category_id, supplier_id"
-      );
+        `
+        id,
+        sku,
+        name,
+        description,
+        price,
+        quantity,
+        category_id,
+        supplier_id
+        `,
+        { count: "exact" } // penting untuk pagination
+      )
+      .range(offset, offset + limit - 1);
+
+    if (name) {
+      query = query.ilike("name", `%${name}%`);
+    }
+
+    const { data, error, count } = await query;
+
     if (error) throw error;
-    return data;
+
+    return {
+      data,
+      pagination: {
+        total: count,
+        page,
+        limit,
+        totalPages: Math.ceil(count / limit),
+      },
+    };
   },
 
   async getById(id) {
@@ -16,13 +45,19 @@ export const MedicationModel = {
       .from("medications")
       .select(
         `
-        id, sku, name, description, price, quantity,
+        id, 
+        sku, 
+        name, 
+        description, 
+        price, 
+        quantity,
         categories ( id, name ),
         suppliers ( id, name, email, phone )
         `
       )
       .eq("id", id)
       .single();
+
     if (error) throw error;
     return data;
   },
@@ -32,6 +67,7 @@ export const MedicationModel = {
       .from("medications")
       .insert([payload])
       .select();
+
     if (error) throw error;
     return data[0];
   },
@@ -42,45 +78,29 @@ export const MedicationModel = {
       .update(payload)
       .eq("id", id)
       .select();
+
     if (error) throw error;
     return data[0];
   },
 
   async remove(id) {
-    const { error } = await supabase.from("medications").delete().eq("id", id);
+    const { error } = await supabase
+      .from("medications")
+      .delete()
+      .eq("id", id);
+
     if (error) throw error;
     return { success: true };
   },
 
-  async searchByName(name) {
-    const { data, error } = await supabase
+  async getTotal() {
+    const { count, error } = await supabase
       .from("medications")
-      .select(
-        "id, sku, name, description, price, quantity, category_id, supplier_id"
-      )
-      .ilike("name", `%${name}%`); // ilike for case-insensitive search
+      .select("*", { count: "exact", head: true }); // hanya hitung jumlah
+
     if (error) throw error;
-    return data;
+    return count;
   },
 
-  async getAllWithPagination(page, limit) {
-    const from = (page - 1) * limit;
-    const to = from + limit - 1;
-    const { data, error, count } = await supabase
-      .from("medications")
-      .select(
-        "id, sku, name, description, price, quantity, category_id, supplier_id",
-        { count: "exact" }
-      )
-      .range(from, to);
-    if (error) throw error;
 
-    return {
-      data,
-      total: count,
-      page,
-      limit,
-      totalPages: Math.ceil(count / limit),
-    };
-  },
 };
