@@ -3,25 +3,15 @@ import { MedicationModel } from "../models/medicationModel.js";
 export const MedicationController = {
   async getAll(req, res) {
     try {
-      const { name, page, limit } = req.query;
+      const { name, page = 1, limit = 10 } = req.query;
 
-      // Prioritas pertama: pencarian
-      if (name) {
-        const meds = await MedicationModel.searchByName(name);
-        return res.json(meds);
-      }
+      const meds = await MedicationModel.getAll(
+        name,
+        parseInt(page),
+        parseInt(limit)
+      );
 
-      // Prioritas kedua: paginasi
-      if (page !== undefined && limit !== undefined) {
-        const pageNum = parseInt(page, 10);
-        const limitNum = parseInt(limit, 10);
-        const meds = await MedicationModel.getAllWithPagination(pageNum, limitNum);
-        return res.json(meds);
-      }
-
-      // Default: semua data tanpa kriteria
-      const meds = await MedicationModel.getAll();
-      return res.json(meds);
+      res.json(meds);
     } catch (err) {
       res.status(500).json({ error: err.message });
     }
@@ -39,8 +29,35 @@ export const MedicationController = {
     }
   },
 
+  async search(req, res) {
+    try {
+      const { name } = req.query;
+      if (!name) {
+        return res.status(400).json({ error: "Name query parameter is required" });
+      }
+      const meds = await MedicationModel.searchByName(name);
+      res.json(meds);
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  },
+
   async create(req, res) {
     try {
+      const { price, quantity } = req.body;
+      const errors = [];
+
+      if (price < 0) {
+        errors.push("Harga tidak boleh kurang dari 0");
+      }
+      if (quantity < 0) {
+        errors.push("Stok tidak boleh kurang dari 0");
+      }
+
+      if (errors.length > 0) {
+        return res.status(400).json({ error: errors.join(" & ") });
+      }
+
       const med = await MedicationModel.create(req.body);
       res.status(201).json(med);
     } catch (err) {
@@ -50,6 +67,20 @@ export const MedicationController = {
 
   async update(req, res) {
     try {
+      const { price, quantity } = req.body;
+      const errors = [];
+
+      if (price < 0) {
+        errors.push("Harga tidak boleh kurang dari 0");
+      }
+      if (quantity < 0) {
+        errors.push("Stok tidak boleh kurang dari 0");
+      }
+
+      if (errors.length > 0) {
+        return res.status(400).json({ error: errors.join(" & ") });
+      }
+
       const med = await MedicationModel.update(req.params.id, req.body);
       if (!med) {
         return res.status(404).json({ error: "Medication not found" });
@@ -63,9 +94,19 @@ export const MedicationController = {
   async remove(req, res) {
     try {
       await MedicationModel.remove(req.params.id);
-      res.json({ message: "Medication deleted successfully" });
+      res.json({ message: "Deleted successfully" });
     } catch (err) {
       res.status(400).json({ error: err.message });
     }
   },
+
+ async getTotal(req, res) {
+    try {
+      const total = await MedicationModel.getTotal();
+      res.json({ total });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  },
+
 };
