@@ -39,28 +39,8 @@ export const MedicationController = {
     }
   },
 
-  async search(req, res) {
-    try {
-      const { name } = req.query;
-      if (!name) {
-        return res.status(400).json({ error: "Name query parameter is required" });
-      }
-      const meds = await MedicationModel.searchByName(name);
-      res.json(meds);
-    } catch (err) {
-      res.status(500).json({ error: err.message });
-    }
-  },
-
   async create(req, res) {
     try {
-      const { price, quantity } = req.body;
-      if (price <= 0 || quantity <= 0) {
-        return res.status(400).json({
-          error: "Price and quantity cannot be less than or equal to zero.",
-        });
-      }
-
       const med = await MedicationModel.create(req.body);
       res.status(201).json(med);
     } catch (err) {
@@ -70,13 +50,6 @@ export const MedicationController = {
 
   async update(req, res) {
     try {
-      const { price, quantity } = req.body;
-      if (price <= 0 || quantity <= 0) {
-        return res.status(400).json({
-          error: "Price and quantity cannot be less than or equal to zero.",
-        });
-      }
-
       const med = await MedicationModel.update(req.params.id, req.body);
       if (!med) {
         return res.status(404).json({ error: "Medication not found" });
